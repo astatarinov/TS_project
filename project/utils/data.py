@@ -10,5 +10,8 @@ def load_balances_data() -> pd.DataFrame:
     """
     Return processed raw data as DataFrame
     """
-    data = pd.read_csv(DATA_PATH / 'balances.csv').set_index("date")
+    data = pd.read_csv(
+        DATA_PATH / 'balances.csv',
+        parse_dates=['date'],
+    ).set_index('date')
     return data

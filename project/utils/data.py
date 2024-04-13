@@ -3,7 +3,7 @@ Model utilities
 """
 import pandas as pd
 import os
-from project.config import DATA_PATH
+from project.config import DATA_PATH, DATA_PARAMS
 
 
 def load_balances_data() -> pd.DataFrame:
@@ -61,8 +61,8 @@ def add_rolling_features(df: pd.DataFrame, column_name: str, days_num=30):
 
 # put create_rolling & rolling_period to config? 
 def add_features_to_balances(balances: pd.DataFrame,
-                              create_rolling=['usd_xr'],
-                              rolling_period=7,
+                              create_rolling=DATA_PARAMS['calc_rolling_metrics'],
+                              rolling_periods=DATA_PARAMS['rolling_period'],
                               ) -> pd.DataFrame:
     """
     Return balances data with added 
@@ -111,7 +111,8 @@ def add_features_to_balances(balances: pd.DataFrame,
     # rolling features 
     for column_name in create_rolling:
         if column_name in res_df.columns: 
-            res_df = add_rolling_features(res_df, column_name, rolling_period)
+            for period in rolling_periods[column_name]:
+                res_df = add_rolling_features(res_df, column_name, period)
         else:
             print("there if no", column_name)
 

@@ -47,7 +47,7 @@ def create_calendar_features(df: pd.DataFrame):
     return df  
 
 
-def add_features_to_balances() -> pd.DataFrame:
+def add_features_to_balances(balances: pd.DataFrame) -> pd.DataFrame:
     """
     Return balances data with added 
     1) calendar features:
@@ -58,8 +58,6 @@ def add_features_to_balances() -> pd.DataFrame:
         - tax days
     2) CBR rate
     """
-
-    balances = load_balances_data()
     
     balances['income - outcome'] = balances['income'] - balances['outcome']
 
@@ -93,9 +91,16 @@ def add_features_to_balances() -> pd.DataFrame:
     return create_calendar_features(res_df)
 
 
-def overwrite_featured_df() -> pd.DataFrame:
+def overwrite_extended_df() -> pd.DataFrame:
+    """
+    Writes extended data to csv
+    
+    (Adds 'income - outcome' and features from add_features_to_balances()) 
+    """
 
-    df = add_features_to_balances().reset_index(drop=False)
+    balances = load_balances_data()
+
+    df = add_features_to_balances(balances).reset_index(drop=False)
     path = os.path.join(DATA_PATH, 'extended_data.csv')
                         
     df.to_csv(path, index=False)

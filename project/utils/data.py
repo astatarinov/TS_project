@@ -3,7 +3,7 @@ Model utilities
 """
 import pandas as pd
 import os
-from project.config import DATA_PATH
+from project.config import DATA_PATH, DATA_PARAMS
 
 
 def load_balances_data() -> pd.DataFrame:
@@ -47,7 +47,23 @@ def create_calendar_features(df: pd.DataFrame):
     return df  
 
 
-def add_features_to_balances(balances: pd.DataFrame) -> pd.DataFrame:
+def add_rolling_features(df: pd.DataFrame, column_name: str, days_num=30):
+    """
+    Adds rolling window metrics for <column_name> series by last <days_num> days
+    """
+    df['{}_mean_{}'.format(column_name, days_num)] = df[column_name].rolling(window=days_num).mean()
+    df['{}_std_{}'.format(column_name, days_num)] = df[column_name].rolling(window=days_num).std()
+    df['{}_min_{}'.format(column_name, days_num)] = df[column_name].rolling(window=days_num).min()
+    df['{}_max_{}'.format(column_name, days_num)] = df[column_name].rolling(window=days_num).max()
+    df['{}_median_{}'.format(column_name, days_num)] = df[column_name].rolling(window=days_num).median()
+
+    return df
+
+# put create_rolling & rolling_period to config? 
+def add_features_to_balances(balances: pd.DataFrame,
+                              create_rolling=DATA_PARAMS['calc_rolling_metrics'],
+                              rolling_periods=DATA_PARAMS['rolling_period'],
+                              ) -> pd.DataFrame:
     """
     Return balances data with added 
     1) calendar features:
@@ -74,20 +90,42 @@ def add_features_to_balances(balances: pd.DataFrame) -> pd.DataFrame:
     cbr_rate['date'] = cbr_rate['date'].apply(pd.Timestamp)
     cbr_rate.set_index('date', inplace=True)
 
+    # MOSPRIME 
+    mosprime = pd.read_csv(DATA_PATH / 'mosprime.csv')
+    mosprime['date'] = mosprime['date'].apply(pd.Timestamp)
+    mosprime.set_index('date', inplace=True)
+
+    # USD exchage rate
+    usd_xr = pd.read_csv(DATA_PATH / 'usd_xr.csv')
+    usd_xr['date'] = usd_xr['date'].apply(pd.Timestamp)
+    usd_xr.set_index('date', inplace=True)
+
     res_df = (
         balances
         .merge(custom_calendar, left_index=True, right_index=True, how='left')
         .merge(cbr_rate, left_index=True, right_index=True, how='left')
+        .merge(mosprime, left_index=True, right_index=True, how='left')
+        .merge(usd_xr, left_index=True, right_index=True, how='left')
     )
 
+    # rolling features 
+    for column_name in create_rolling:
+        if column_name in res_df.columns: 
+            for period in rolling_periods[column_name]:
+                res_df = add_rolling_features(res_df, column_name, period)
+        else:
+            print("there if no", column_name)
+
     res_df['day_before_holiday'] =  res_df['isholiday'].shift().fillna(0)
+    res_df['day_after_holidays'] = (
+        (res_df['isholiday'].shift().fillna(0) == 1) & (res_df['isholiday']==0)
+    ).astype(int)
 
     # tax day
     res_df['tax'] =  (res_df.index.day == 28).astype(int)
     res_df['day_before_tax'] =  (res_df.index.day == 27).astype(int)
 
-    # add basic calendar features and return 
-
+    # add basic calendar features by index and return 
     return create_calendar_features(res_df)
 
 

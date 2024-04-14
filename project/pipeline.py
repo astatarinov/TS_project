@@ -6,19 +6,19 @@ import pandas as pd
 from project.utils.data import load_extended_data
 
 
-def detect_anomalies():
+def detect_change_point():
     """
     Detect data drifts so trained model is unusable
     """
-    print('Starting anomalies detector')
+    print('Starting change point detector')
 
-    anomaly_flag = True  # todo: run kliep
+    change_point_flag = True  # todo: run kliep
 
-    if not anomaly_flag:
-        print('No anomalies detected – its OK to use predictions')
+    if not change_point_flag:
+        print('No change point detected, its OK to use predictions')
         return
 
-    print('Anomalies detected – use the model carefully')
+    print('Change point detected, use the model carefully')
     print('Rerun model training...')
 
     run_model_pipeline()
@@ -81,6 +81,7 @@ def run_model_pipeline(current_date: pd.Timestamp = None):
     Main model pipeline
     """
     current_date = current_date or pd.Timestamp.now()
+
     print('Starting model pipeline')
 
     print('Loading raw data')

@@ -12,6 +12,7 @@ DATA_PARAMS = {
     "calc_rolling_metrics": ["usd_xr"],
     # dict with rolling period for each column
     "rolling_period": {"usd_xr": [7]},
+    "max_features": 20,
 }
 
 

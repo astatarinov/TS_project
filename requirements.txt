@@ -7,3 +7,6 @@ matplotlib
 scikit-learn
 schedule
 tsfresh
+sktime
+statsmodels
+catboost

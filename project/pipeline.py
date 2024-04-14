@@ -148,10 +148,6 @@ def train_model(
     return best_model
 
 
-def get_today_data(current_date: pd.Timestamp):
-    data = get_raw_data(current_date=current_date + pd.DateOffset(1))
-    return data.iloc[-1]["balance"]
-
 
 def get_today_(current_date: pd.Timestamp):
     data = get_raw_data(current_date=current_date + pd.DateOffset(1))
@@ -194,7 +190,7 @@ def run_full_pipeline(
     print('-' * 50)
 
     today_observation = get_today_(current_date=current_date)
-    print(pd.DataFrame(today_observation).T)
+    # print(pd.DataFrame(today_observation).T)
     if use_tsfresh:
         today_observation = build_features(pd.DataFrame(today_observation).T)
 
@@ -203,8 +199,7 @@ def run_full_pipeline(
 
     # todo: more business metrics
 
-    real_balance = get_today_data(current_date)
     today_metric = calculate_add_margin(
-        prediction=prediction, target=real_balance, cbr_key_rate=today_observation["key_rate"]
+        prediction=prediction, target=today_observation['balance'], cbr_key_rate=today_observation["key_rate"]
     )
     print(f"date: {current_date}, add margin: {today_metric}")

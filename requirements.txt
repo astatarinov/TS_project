@@ -4,3 +4,4 @@ matplotlib
 cvxpy
 sklearn
 schedule
+tsfresh

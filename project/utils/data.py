@@ -1,9 +1,11 @@
 """
 Model utilities
 """
-import pandas as pd
 import os
-from project.config import DATA_PATH, DATA_PARAMS
+
+import pandas as pd
+
+from project.config import DATA_PARAMS, DATA_PATH
 
 
 def load_balances_data() -> pd.DataFrame:

@@ -185,3 +185,12 @@ def load_target_data() -> pd.Series:
         parse_dates=['date'],
     ).set_index('date')
     return data
+
+
+def load_cbr_rates() -> pd.DataFrame:
+
+    data = pd.read_csv(
+        DATA_PATH / 'cbr_rate.csv',
+        parse_dates=['date'],
+    ).set_index('date')
+    return data

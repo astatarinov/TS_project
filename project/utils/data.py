@@ -161,5 +161,5 @@ def load_extended_data() -> pd.DataFrame:
     data = pd.read_csv(
         DATA_PATH / 'extended_data.csv',
         parse_dates=['date'],
-    ).set_index('date').sort_index()
+    ).set_index('date').sort_index().dropna()
     return data

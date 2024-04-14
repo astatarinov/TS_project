@@ -2,13 +2,11 @@
 Model prod pipeline
 """
 from dataclasses import asdict
-from datetime import datetime
 
 import pandas as pd
 
 from project.utils.data import load_extended_data
 from project.utils.metrics import calculate_daily_profit
-
 from .config import INCOME_KLIEP_CONGIF, OUTCOME_KLIEP_CONGIF
 from .kliep import change_series, perform_kliep
 
@@ -29,7 +27,7 @@ def get_raw_data(
 def detect_change_point(current_date: pd.Timestamp) -> pd.Timestamp:
     """
     Detect data drifts so trained model is unusable.
-    Returns last detected changepoint. If no changepoints were detected returns the first date.
+    Returns last detected changepoint. If no change points were detected returns the first date.
     """
     print("Starting changepoint detector")
 

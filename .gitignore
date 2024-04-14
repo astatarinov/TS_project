@@ -17,8 +17,5 @@ venv/
 
 # MacOS trash
 .DS_Store
-notebooks/catboost_info/catboost_training.json
-*time_left.tsv
-*learn_error.tsv
-*events.out.tfevents
-*/catboost_info/tmp/cat_feature_index.2b5e7e35-ee9e8f21-f34c03ee-2985f52.tmp
+
+*/catboost_info

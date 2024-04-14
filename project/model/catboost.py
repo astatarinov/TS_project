@@ -6,28 +6,31 @@ from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
 
 
-def catboost_ts_model_fit(target,
-                          features,
-                          params_grid,
-                          model_class,
-                          cv_window='expanding',
-                          n_splits=5,
-                          additional_metric=None,
-                          test_size=0.2
-                          ):
+def catboost_ts_model_fit(
+    target,
+    features,
+    params_grid,
+    model_class,
+    cv_window="expanding",
+    n_splits=5,
+    additional_metric=None,
+    test_size=0.2,
+):
     # Step 1: Split time series data into train and test
     split_index = int(len(target) * (1 - test_size))
     target_train, target_test = target[:split_index], target[split_index:]
     features_train, features_test = features[:split_index], features[split_index:]
 
     # Step 2: Define Time Series Cross-Validation
-    if cv_window == 'expanding':
+    if cv_window == "expanding":
         cv = TimeSeriesSplit(n_splits=n_splits if n_splits else len(target_train))
-    elif cv_window == 'rolling':
+    elif cv_window == "rolling":
         cv = TimeSeriesSplit(n_splits=n_splits)
 
     # Step 3: Run Grid Search CV on the train data
-    grid_search = GridSearchCV(model_class, params_grid, cv=cv, scoring='neg_mean_absolute_error')
+    grid_search = GridSearchCV(
+        model_class, params_grid, cv=cv, scoring="neg_mean_absolute_error"
+    )
     grid_search.fit(features_train, target_train)
 
     best_model = grid_search.best_estimator_

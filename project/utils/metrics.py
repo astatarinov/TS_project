@@ -1,6 +1,7 @@
 """
 Metrics for model validation
 """
+
 from typing import Iterable
 
 import numpy as np
@@ -31,23 +32,26 @@ def calculate_add_margin(
     """
     Calculates additional margin that can be earned by using model
     """
-    # if deficit predicted than we do nothing 
+    # if deficit predicted than we do nothing
     if prediction <= 0:
         return 0
     deviation = prediction - target
     add_earnings = (
         (
             # gi from derivatives
-            prediction * _calculate_rate_share(cbr_key_rate, profit_rate_diff)
-        ) 
+            prediction
+            * _calculate_rate_share(cbr_key_rate, profit_rate_diff)
+        )
         - (
             # gi that would be earned by OverNight deposit anyway
-            target * _calculate_rate_share(cbr_key_rate, on_deposit_rate_diff) 
+            target
+            * _calculate_rate_share(cbr_key_rate, on_deposit_rate_diff)
         )
         - (
             # prediction mistake "fee"
             # if pred > target > 0, need to loan ON to cover difference
-            max(deviation, 0) * _calculate_rate_share(cbr_key_rate, on_loan_rate_diff)
+            max(deviation, 0)
+            * _calculate_rate_share(cbr_key_rate, on_loan_rate_diff)
         )
     )
     return add_earnings
@@ -65,13 +69,14 @@ def calculate_total_add_margin(
     Calculate total additional profit over the period
     """
     earnings = sum(
-        target * calculate_add_margin(
+        target
+        * calculate_add_margin(
             pred,
             target,
             key_rate,
             profit_rate_diff,
             on_deposit_rate_diff,
-            on_loan_rate_diff
+            on_loan_rate_diff,
         )
         for pred, target, key_rate in zip(predictions, targets, cbr_key_rates)
     )
@@ -92,7 +97,8 @@ def calculate_daily_profit(
     deviation = prediction - target
     earnings = (
         prediction * (1 + _calculate_rate_share(cbr_key_rate, profit_rate_diff))
-        + min(deviation, 0) * (1 + _calculate_rate_share(cbr_key_rate, on_deposit_rate_diff))
+        + min(deviation, 0)
+        * (1 + _calculate_rate_share(cbr_key_rate, on_deposit_rate_diff))
         - max(deviation, 0) * _calculate_rate_share(cbr_key_rate, on_loan_rate_diff)
     )
     profit = (earnings - target) / target

@@ -1,6 +1,7 @@
 """
 Model prod pipeline
 """
+
 from dataclasses import asdict
 
 import numpy as np
@@ -131,15 +132,18 @@ def train_model(
     print("Run model training")
     model = CatBoostRegressor(verbose=0)
     param_grid = {
-        'iterations': [100, 200, 300],
-        'learning_rate': [0.1, 1],
-        'depth': [5, 7, 8],
+        "iterations": [100, 200, 300],
+        "learning_rate": [0.1, 1],
+        "depth": [5, 7, 8],
     }
     if use_tsfresh:
-        param_grid = {'depth': [5], 'iterations': [200], 'learning_rate': [0.1]}
+        param_grid = {"depth": [5], "iterations": [200], "learning_rate": [0.1]}
     best_model, mae_test, additional_metric_result, best_params = catboost_ts_model_fit(
         target=features_df["balance"],
-        features=features_df.drop(columns="balance"), params_grid=param_grid, model_class=model, cv_window='rolling',
+        features=features_df.drop(columns="balance"),
+        params_grid=param_grid,
+        model_class=model,
+        cv_window="rolling",
     )
     print("Model trained")
     print(f"Best hyperparameters: {best_params}")
@@ -178,7 +182,7 @@ def run_full_pipeline(
             f"Not enough samples to train model after change point ({days_after_cp}/{min_days_after_change_point}). Use manual model."
         )
 
-    print('-' * 50)
+    print("-" * 50)
     model = train_model(
         start_date=last_changepoint,
         current_date=current_date,
@@ -187,7 +191,7 @@ def run_full_pipeline(
     )
     if model is None:
         return
-    print('-' * 50)
+    print("-" * 50)
 
     today_observation = get_today_(current_date=current_date)
     # print(pd.DataFrame(today_observation).T)

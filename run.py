@@ -12,8 +12,8 @@ from project.pipeline import detect_change_point, train_model
 if __name__ == "__main__":
     print(f'Start serving at {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
 
-    schedule.every().day.at('07:00').do(train_model)
-    schedule.every().hour.at(':00').do(detect_change_point)
+    schedule.every().day.at("07:00").do(train_model)
+    schedule.every().hour.at(":00").do(detect_change_point)
 
     while True:
         schedule.run_pending()

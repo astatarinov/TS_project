@@ -26,7 +26,7 @@ def get_raw_data(
     return raw_data.loc[start_date:current_date]
 
 
-def detect_anomalies(current_date: pd.Timestamp) -> pd.Timestamp:
+def detect_change_point(current_date: pd.Timestamp) -> pd.Timestamp:
     """
     Detect data drifts so trained model is unusable.
     Returns last detected changepoint. If no changepoints were detected returns the first date.
@@ -158,7 +158,7 @@ def run_full_pipeline(current_date: pd.Timestamp):
     4. делать предикт на сегодня
     5. отписывать логи, насколько мы ошиблись, сколько денег заработали / потеряли и тд.
     """
-    last_changepoint = detect_anomalies(current_date)
+    last_changepoint = detect_change_point(current_date)
     run_model_pipeline(start_date=last_changepoint, current_date=current_date)
     prediction = run_model_validation(current_date)  # предсказываем сегодняшний день [!ЭТО НУЖНО ДОПИСАТЬ!]
     today_data = get_today_data(current_date)

@@ -34,7 +34,8 @@ def create_calendar_features(df: pd.DataFrame):
     df['end_of_month'] = df.index.is_month_end.astype(int)  
   
     # Create dummy columns for years  
-    unique_years = df.index.year.unique()  
+    # unique_years = df.index.year.unique()  
+    unique_years = [2017, 2018, 2019, 2020, 2021]
     for year in unique_years:  
         df[f'year_{year}'] = (df.index.year == year).astype(int)  
   

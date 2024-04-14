@@ -23,7 +23,7 @@ def create_lag_features(df, column_name, lag_levels):
     for lag in lag_levels:
         new_column_name = f'L{lag}_{column_name}'
         df[new_column_name] = df[column_name].shift(lag)
-    
+
     return df
 
 
@@ -162,4 +162,26 @@ def load_extended_data() -> pd.DataFrame:
         DATA_PATH / 'extended_data.csv',
         parse_dates=['date'],
     ).set_index('date').sort_index().dropna()
+    return data
+
+
+def load_tsfresh_data() -> pd.DataFrame:
+    """
+    Return tsfresh features dataframe
+    """
+    data = pd.read_csv(
+        DATA_PATH / 'tsfresh_features.csv',
+        parse_dates=['date'],
+    ).set_index('date')
+    return data
+
+
+def load_target_data() -> pd.Series:
+    """
+    Return target values
+    """
+    data = pd.read_csv(
+        DATA_PATH / 'target.csv',
+        parse_dates=['date'],
+    ).set_index('date')
     return data

@@ -131,6 +131,17 @@ def calculate_total_earnings(
     return earnings
 
 
+def check_business_requirements_for_sample(
+    prediction: float,
+    target: float,
+    max_deviation: float = 0.42,
+) -> bool:
+    """
+    Check if model predictions satisfy business requirements
+    """
+    return abs(prediction - target) <= max_deviation
+
+
 def check_business_requirements(
     predictions: pd.Series | np.ndarray,
     targets: pd.Series | np.ndarray,

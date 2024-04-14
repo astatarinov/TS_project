@@ -10,11 +10,15 @@ from catboost import CatBoostRegressor
 from tsfresh import extract_relevant_features
 from tsfresh.feature_extraction import settings
 
-from project.utils.data import load_extended_data, create_target_features, select_topN_mutual_info
+from project.utils.data import (
+    load_extended_data,
+    create_target_features,
+    select_topN_mutual_info,
+)
 from .config import INCOME_KLIEP_CONGIF, OUTCOME_KLIEP_CONGIF, DATA_PARAMS
 from .kliep import change_series, perform_kliep
 from .model.catboost import catboost_ts_model_fit
-from .utils.metrics import calculate_add_margin
+from .utils.metrics import calculate_add_margin, check_business_requirements_for_sample
 
 
 def get_raw_data(
@@ -120,7 +124,7 @@ def train_model(
 
     if raw_data.shape[0] < min_samples_for_training:
         print("Too small dataset for training. Skip training")
-        return
+        return None, None
 
     if use_tsfresh:
         print("Building features from raw data using tsfresh")
@@ -132,26 +136,34 @@ def train_model(
 
         print("FS using Mutual Information")
         selected_features = select_topN_mutual_info(
-            y = features_df["balance"],
+            y=features_df["balance"],
             X=features_df.drop(columns=target_columns),
-            N=DATA_PARAMS["max_features"]
+            N=DATA_PARAMS["max_features"],
         )
 
     print("Run model training")
 
-    model = CatBoostRegressor(verbose=0,)
+    model = CatBoostRegressor(
+        verbose=0,
+    )
 
     param_grid = {
-        'iterations': [50, 100, 200,],
-        'learning_rate': [0.1, 1],
-        'depth': [4, 5, 7],
+        "iterations": [
+            50,
+            100,
+            200,
+        ],
+        "learning_rate": [0.1, 1],
+        "depth": [4, 5, 7],
     }
     if use_tsfresh:
         param_grid = {"depth": [5], "iterations": [200], "learning_rate": [0.1]}
     best_model, mae_test, additional_metric_result, best_params = catboost_ts_model_fit(
         target=features_df["balance"],
         features=features_df[selected_features],
-        params_grid=param_grid, model_class=model, cv_window='expanding',
+        params_grid=param_grid,
+        model_class=model,
+        cv_window="expanding",
     )
     print("Model trained")
     print(f"Best hyperparameters: {best_params}")
@@ -194,7 +206,7 @@ def run_full_pipeline(
             f"Not enough samples to train model after change point ({days_after_cp}/{min_days_after_change_point}). Use manual model."
         )
 
-    print('-' * 50)
+    print("-" * 50)
     model, _ = train_model(
         start_date=last_changepoint,
         current_date=current_date,
@@ -214,7 +226,17 @@ def run_full_pipeline(
     print(f"Prediction: {prediction}")
 
     real_balance = get_today_data(current_date)
+
+    accepted = check_business_requirements_for_sample(real_balance, prediction)
+    deviation = abs(real_balance - prediction)
+    if accepted:
+        print(f"Prediction is accepted by business requirements. Abs deviation: {deviation}")
+    else:
+        print(f"Prediction is NOT accepted by business requirements. Abs deviation: {deviation}")
+
     today_metric = calculate_add_margin(
-        prediction=prediction, target=real_balance, cbr_key_rate=today_observation["key_rate"]
+        prediction=prediction,
+        target=real_balance,
+        cbr_key_rate=today_observation["key_rate"],
     )
     print(f"date: {current_date}, add margin: {today_metric}")

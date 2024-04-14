@@ -19,6 +19,14 @@ def load_balances_data() -> pd.DataFrame:
     return data
 
 
+def create_lag_features(df, column_name, lag_levels):
+    for lag in lag_levels:
+        new_column_name = f'L{lag}_{column_name}'
+        df[new_column_name] = df[column_name].shift(lag)
+    
+    return df
+
+
 def create_calendar_features(df: pd.DataFrame):
     """
     Creates basic calendar features

@@ -20,7 +20,7 @@ class KliepConfig:
     sigma: float
     z: int
     window_size: int
-    verbose: bool = True
+    verbose: bool = False
 
 
 INCOME_KLIEP_CONGIF = KliepConfig(

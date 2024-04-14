@@ -53,12 +53,12 @@ def detect_change_point(current_date: pd.Timestamp) -> pd.Timestamp:
     if len(income_changepoints) == 0 and len(outcome_changepoints) == 0:
         return data_till_today.index[0]
 
-    last_income_chengepoint = data_till_today.index[income_changepoints[-1]].date()
-    print("last_income_chengepoint ".upper(), last_income_chengepoint)
-    last_outcome_chengepoint = data_till_today.index[outcome_changepoints[-1]].date()
-    print("last_outcome_chengepoint ".upper(), last_outcome_chengepoint)
+    last_income_changepoint = data_till_today.index[income_changepoints[-1]].date()
+    print("last_income_changepoint ".upper(), last_income_changepoint)
+    last_outcome_changepoint = data_till_today.index[outcome_changepoints[-1]].date()
+    print("last_outcome_changepoint ".upper(), last_outcome_changepoint)
 
-    return max(last_income_chengepoint, last_outcome_chengepoint)
+    return max(last_income_changepoint, last_outcome_changepoint)
 
 
 def build_features(raw_data: pd.DataFrame) -> pd.DataFrame:
@@ -159,7 +159,9 @@ def run_full_pipeline(current_date: pd.Timestamp):
     5. отписывать логи, насколько мы ошиблись, сколько денег заработали / потеряли и тд.
     """
     last_changepoint = detect_change_point(current_date)
+    print('-' * 50)
     run_model_pipeline(start_date=last_changepoint, current_date=current_date)
+    print('-' * 50)
     prediction = run_model_validation(current_date)  # предсказываем сегодняшний день [!ЭТО НУЖНО ДОПИСАТЬ!]
     today_data = get_today_data(current_date)
     today_metric = calculate_daily_profit(

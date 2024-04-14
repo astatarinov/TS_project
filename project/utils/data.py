@@ -60,6 +60,15 @@ def add_rolling_features(df: pd.DataFrame, column_name: str, days_num=30):
 
     return df
 
+
+def create_lag_features(df, column_name, lag_levels):
+    for lag in lag_levels:
+        new_column_name = f'L{lag}_{column_name}'
+        df[new_column_name] = df[column_name].shift(lag)
+    
+    return df
+
+
 # put create_rolling & rolling_period to config? 
 def add_features_to_balances(balances: pd.DataFrame,
                               create_rolling=DATA_PARAMS['calc_rolling_metrics'],

@@ -1,7 +1,9 @@
+cvxpy-base
+scs
+ecos
 pandas
 numpy
 matplotlib
-cvxpy
-sklearn
+scikit-learn
 schedule
 tsfresh

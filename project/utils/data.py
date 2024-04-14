@@ -4,6 +4,7 @@ Model utilities
 import os
 
 import pandas as pd
+from sklearn.feature_selection import mutual_info_regression
 
 from project.config import DATA_PARAMS, DATA_PATH
 
@@ -194,3 +195,29 @@ def load_cbr_rates() -> pd.DataFrame:
         parse_dates=['date'],
     ).set_index('date')
     return data
+
+
+def create_target_features(
+        df: pd.DataFrame,
+        target_name,
+        target_lags=[1, 7],
+        rolling_period=7,
+    ) -> pd.DataFrame:
+    """
+    Adds lag and rolling stats for target 
+    (Necessary if tsfresh is not being used)
+    """
+    df = add_rolling_features(df, target_name, rolling_period)
+    return create_lag_features(df, target_name, target_lags)
+
+
+def select_topN_mutual_info(y, X, N=20):
+    """
+    Selects top N features by Mutual Information with target
+    """
+    # determine the mutual information
+    mutual_info = mutual_info_regression(X.fillna(0), y)
+    mutual_info = pd.Series(mutual_info)
+    mutual_info.index = X.columns
+    return list(mutual_info.sort_values(ascending=False).head(N).index)
+    

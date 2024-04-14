@@ -1,36 +1,62 @@
 """
 Model prod pipeline
 """
+from dataclasses import asdict
+
 import pandas as pd
 
 from project.utils.data import load_extended_data
+from project.utils.metrics import calculate_daily_profit
+from .config import INCOME_KLIEP_CONGIF, OUTCOME_KLIEP_CONGIF
+from .kliep import change_series, perform_kliep
 
 
-def detect_change_point():
-    """
-    Detect data drifts so trained model is unusable
-    """
-    print('Starting change point detector')
-
-    change_point_flag = True  # todo: run kliep
-
-    if not change_point_flag:
-        print('No change point detected, its OK to use predictions')
-        return
-
-    print('Change point detected, use the model carefully')
-    print('Rerun model training...')
-
-    run_model_pipeline()
-
-
-def get_raw_data(current_date: pd.Timestamp = None) -> pd.DataFrame:
+def get_raw_data(
+    start_date: pd.Timestamp = None, current_date: pd.Timestamp = None
+) -> pd.DataFrame:
     """
     Load raw data
     """
-    current_date = current_date or pd.Timestamp.now()
     raw_data = load_extended_data()
-    return raw_data.loc[:current_date]
+    start_date = start_date or raw_data.index[0]
+    current_date = current_date or pd.Timestamp.now()
+
+    return raw_data.loc[start_date:current_date]
+
+
+def detect_change_point(current_date: pd.Timestamp) -> pd.Timestamp:
+    """
+    Detect data drifts so trained model is unusable.
+    Returns last detected changepoint. If no change points were detected returns the first date.
+    """
+    print("Starting changepoint detector")
+
+    data_till_today = get_raw_data(current_date=current_date)
+
+    data_till_today_changed = change_series(
+        series=data_till_today["income"].values, type_change="lin"
+    )
+    income_stats, income_changepoints = perform_kliep(
+        data_val=data_till_today_changed,
+        **asdict(INCOME_KLIEP_CONGIF),
+    )
+    data_till_today_changed = change_series(
+        series=data_till_today["outcome"].values, type_change="lin"
+    )
+    outcome_stats, outcome_changepoints = perform_kliep(
+        data_val=data_till_today_changed,
+        **asdict(OUTCOME_KLIEP_CONGIF),
+    )
+
+    if len(income_changepoints) == 0 and len(outcome_changepoints) == 0:
+        return data_till_today.index[0]
+
+    last_income_changepoint = data_till_today.index[income_changepoints[-1]].date()
+    print("last_income_changepoint ".upper(), last_income_changepoint)
+    last_outcome_changepoint = data_till_today.index[outcome_changepoints[-1]].date()
+    print("last_outcome_changepoint ".upper(), last_outcome_changepoint)
+
+    return max(last_income_changepoint, last_outcome_changepoint)
 
 
 def build_features(raw_data: pd.DataFrame) -> pd.DataFrame:
@@ -76,36 +102,67 @@ def run_model_validation():
     # todo: return validation results
 
 
-def run_model_pipeline(current_date: pd.Timestamp = None):
+def run_model_pipeline(start_date: pd.Timestamp, current_date: pd.Timestamp):
     """
     Main model pipeline
     """
-    current_date = current_date or pd.Timestamp.now()
+    print("Starting model pipeline")
 
-    print('Starting model pipeline')
+    print("Loading raw data")
+    raw_data = get_raw_data(start_date, current_date)
+    print(f"Raw data loaded. Shape: {raw_data.shape}")
 
-    print('Loading raw data')
-    raw_data = get_raw_data(current_date)
-    print(f'Raw data loaded. Shape: {raw_data.shape}')
-
-    print('Building features from raw data')
+    print("Building features from raw data")
     features_df = build_features(raw_data)
-    print(f'Features dataset built. Shape: {features_df.shape}')
+    print(f"Features dataset built. Shape: {features_df.shape}")
 
-    print('Selecting features for training')
+    print("Selecting features for training")
     dataset = select_features(raw_data)
-    print(f'Training features selected. Shape: {dataset.shape}')
+    print(f"Training features selected. Shape: {dataset.shape}")
 
-    print('Splitting dataset into train/val')
+    print("Splitting dataset into train/val")
     X_train, X_test, y_train, y_test = split_data(dataset)
-    print('Dataset split')
+    print("Dataset split")
 
-    print('Run model training')
+    print("Run model training")
     model = run_model_training(X_train, y_train)
-    print('Model trained')
+    print("Model trained")
 
-    print('Run model validation')
+    print("Run model validation")
     val_results = run_model_validation(model)
-    print('Model validated')
+    print("Model validated")
 
     print(val_results)
+
+
+def get_today_data(current_date: pd.Timestamp):
+    data = get_raw_data(current_date=current_date + pd.DateOffset(1))
+    return data.iloc[-1]["balance"]
+
+
+def get_today_(current_date: pd.Timestamp):
+    data = get_raw_data(current_date=current_date + pd.DateOffset(1))
+    return data.iloc[-1]
+
+
+def run_full_pipeline(current_date: pd.Timestamp):
+    """
+    Это основная функция, которую будем вызывать для каждой даты в тестовом промежутке.
+    (При смене дня в предыдущий подкладывается реальный показатель, поскольку день закончен и баланс известен)
+    Она должа:
+    1. детектить разладку (находит дату последнего изменения)
+    2. брать данные с последней разладки
+    3. на этих данных прогонять model_pipeline
+    4. делать предикт на сегодня
+    5. отписывать логи, насколько мы ошиблись, сколько денег заработали / потеряли и тд.
+    """
+    last_changepoint = detect_change_point(current_date)
+    print('-' * 50)
+    run_model_pipeline(start_date=last_changepoint, current_date=current_date)
+    print('-' * 50)
+    prediction = run_model_validation(current_date)  # предсказываем сегодняшний день [!ЭТО НУЖНО ДОПИСАТЬ!]
+    today_data = get_today_data(current_date)
+    today_metric = calculate_daily_profit(
+        prediction, target=today_data["balance"], cbr_key_rate=today_data["key_rate"]
+    )
+    print(f"date: {current_date}, metric: {today_metric}")

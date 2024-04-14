@@ -111,13 +111,14 @@ def calculate_total_earnings(
     Calculate total profit over the period
     """
     earnings = sum(
-        target * calculate_daily_profit(
+        target
+        * calculate_daily_profit(
             pred,
             target,
             key_rate,
             profit_rate_diff,
             on_deposit_rate_diff,
-            on_loan_rate_diff
+            on_loan_rate_diff,
         )
         for pred, target, key_rate in zip(predictions, targets, cbr_key_rates)
     )
@@ -132,6 +133,4 @@ def check_business_requirements(
     """
     Check if model predictions satisfy business requirements
     """
-    return (
-        np.abs(predictions - targets) <= max_deviation
-    ).all()
+    return (np.abs(predictions - targets) <= max_deviation).all()

@@ -5,7 +5,7 @@ import os
 
 import pandas as pd
 
-from project.config import DATA_PATH, DATA_PARAMS
+from project.config import DATA_PARAMS, DATA_PATH
 
 
 def load_balances_data() -> pd.DataFrame:
@@ -48,9 +48,11 @@ def create_calendar_features(df: pd.DataFrame):
     for year in unique_years:
         df[f'year_{year}'] = (df.index.year == year).astype(int)
 
-        # Create dummy columns for months
-    months = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
-              'August', 'September', 'October', 'November', 'December']
+    # Create dummy columns for months
+    months = [
+        'January', 'February', 'March', 'April', 'May', 'June', 'July',
+        'August', 'September', 'October', 'November', 'December'
+    ]
     for month in months:
         df[month] = (df.index.month_name() == month).astype(int)
 
@@ -159,5 +161,5 @@ def load_extended_data() -> pd.DataFrame:
     data = pd.read_csv(
         DATA_PATH / 'extended_data.csv',
         parse_dates=['date'],
-    ).set_index('date').sort_index()
+    ).set_index('date').sort_index().dropna()
     return data

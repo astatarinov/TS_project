@@ -3,12 +3,17 @@ Model prod pipeline
 """
 from dataclasses import asdict
 
+import numpy as np
 import pandas as pd
+from catboost import CatBoostRegressor
+from tsfresh import extract_relevant_features
+from tsfresh.feature_extraction import settings
 
 from project.utils.data import load_extended_data
-from project.utils.metrics import calculate_daily_profit
 from .config import INCOME_KLIEP_CONGIF, OUTCOME_KLIEP_CONGIF
 from .kliep import change_series, perform_kliep
+from .model.catboost import catboost_ts_model_fit
+from .utils.metrics import calculate_add_margin
 
 
 def get_raw_data(
@@ -61,50 +66,49 @@ def detect_change_point(current_date: pd.Timestamp) -> pd.Timestamp:
 
 def build_features(raw_data: pd.DataFrame) -> pd.DataFrame:
     """
-    Build features based on data
+    Build features based on data via tsfresh
     """
-    # todo: implement
-    return raw_data
+    X = raw_data.drop(columns="balance")
+    data_long = pd.DataFrame(
+        {
+            "values": X.values.flatten(),
+            "id": np.arange(X.shape[0]).repeat(X.shape[1]),
+        }
+    )
 
+    y_indexed = raw_data["balance"].copy()
+    y_indexed.index = np.arange(X.shape[0])
 
-def select_features(features_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Run features selection
-    """
-    # todo: implement
+    ts_settings = settings.ComprehensiveFCParameters()
+
+    features_df = extract_relevant_features(
+        data_long,
+        y_indexed,
+        column_id="id",
+        default_fc_parameters=ts_settings,
+    )
+    features_df.index = X.index
+
+    features_df = features_df.join(raw_data["balance"])
     return features_df
 
 
-def split_data(dataset: pd.DataFrame, test_size: float = 0.2) -> pd.DataFrame:
-    """
-    Split data for train/test
-    """
-    # todo: implement
-    # todo: pay attention to the time, shuffling, random state, stratification
-
-
-def run_model_training():
-    """
-    Run model training
-    """
-    # todo: load SOTA model
-    # todo: implement
-    # todo: save model state to binary file
-    # todo: print training logs
-
-
-def run_model_validation():
+def run_model_validation(model, sample) -> float:
     """
     Run model validation
     """
-    # todo: implement
-    # todo: print validation logs
-    # todo: return validation results
+    return model.predict(sample)
 
 
-def run_model_pipeline(start_date: pd.Timestamp, current_date: pd.Timestamp):
+def train_model(
+    start_date: pd.Timestamp,
+    current_date: pd.Timestamp,
+    min_samples_for_training: int,
+    use_tsfresh: bool = False,
+):
     """
     Main model pipeline
+    Return trained model object
     """
     print("Starting model pipeline")
 
@@ -112,27 +116,36 @@ def run_model_pipeline(start_date: pd.Timestamp, current_date: pd.Timestamp):
     raw_data = get_raw_data(start_date, current_date)
     print(f"Raw data loaded. Shape: {raw_data.shape}")
 
-    print("Building features from raw data")
-    features_df = build_features(raw_data)
-    print(f"Features dataset built. Shape: {features_df.shape}")
+    if raw_data.shape[0] < min_samples_for_training:
+        print("Too small dataset for training. Skip training")
+        return
 
-    print("Selecting features for training")
-    dataset = select_features(raw_data)
-    print(f"Training features selected. Shape: {dataset.shape}")
-
-    print("Splitting dataset into train/val")
-    X_train, X_test, y_train, y_test = split_data(dataset)
-    print("Dataset split")
+    if use_tsfresh:
+        print("Building features from raw data using tsfresh")
+        features_df = build_features(raw_data)
+        print(f"Features dataset built. Shape: {features_df.shape}")
+    else:
+        print("tsfresh is disabled. Pre-built features loaded")
+        features_df = raw_data
 
     print("Run model training")
-    model = run_model_training(X_train, y_train)
+    model = CatBoostRegressor(verbose=0)
+    param_grid = {
+        'iterations': [100, 200, 300],
+        'learning_rate': [0.1, 1],
+        'depth': [5, 7, 8],
+    }
+    if use_tsfresh:
+        param_grid = {'depth': [5], 'iterations': [200], 'learning_rate': [0.1]}
+    best_model, mae_test, additional_metric_result, best_params = catboost_ts_model_fit(
+        target=features_df["balance"],
+        features=features_df.drop(columns="balance"), params_grid=param_grid, model_class=model, cv_window='rolling',
+    )
     print("Model trained")
+    print(f"Best hyperparameters: {best_params}")
+    print(f"MAE on validation: {mae_test}")
 
-    print("Run model validation")
-    val_results = run_model_validation(model)
-    print("Model validated")
-
-    print(val_results)
+    return best_model
 
 
 def get_today_data(current_date: pd.Timestamp):
@@ -145,24 +158,53 @@ def get_today_(current_date: pd.Timestamp):
     return data.iloc[-1]
 
 
-def run_full_pipeline(current_date: pd.Timestamp):
+def run_full_pipeline(
+    current_date: pd.Timestamp,
+    min_samples_for_training: int = 50,
+    min_days_after_change_point: int = 50,
+    use_tsfresh: bool = False,
+):
     """
     Это основная функция, которую будем вызывать для каждой даты в тестовом промежутке.
     (При смене дня в предыдущий подкладывается реальный показатель, поскольку день закончен и баланс известен)
-    Она должа:
-    1. детектить разладку (находит дату последнего изменения)
+    Назначение функции:
+    1. детектить разладку (находить дату последнего изменения)
     2. брать данные с последней разладки
     3. на этих данных прогонять model_pipeline
     4. делать предикт на сегодня
     5. отписывать логи, насколько мы ошиблись, сколько денег заработали / потеряли и тд.
     """
     last_changepoint = detect_change_point(current_date)
+
+    days_after_cp = (current_date - pd.Timestamp(last_changepoint)).days
+    if days_after_cp < min_days_after_change_point:
+        print(
+            f"Not enough samples to train model after change point ({days_after_cp}/{min_days_after_change_point}). Use manual model."
+        )
+
     print('-' * 50)
-    run_model_pipeline(start_date=last_changepoint, current_date=current_date)
-    print('-' * 50)
-    prediction = run_model_validation(current_date)  # предсказываем сегодняшний день [!ЭТО НУЖНО ДОПИСАТЬ!]
-    today_data = get_today_data(current_date)
-    today_metric = calculate_daily_profit(
-        prediction, target=today_data["balance"], cbr_key_rate=today_data["key_rate"]
+    model = train_model(
+        start_date=last_changepoint,
+        current_date=current_date,
+        min_samples_for_training=min_samples_for_training,
+        use_tsfresh=use_tsfresh,
     )
-    print(f"date: {current_date}, metric: {today_metric}")
+    if model is None:
+        return
+    print('-' * 50)
+
+    today_observation = get_today_(current_date=current_date)
+    print(pd.DataFrame(today_observation).T)
+    if use_tsfresh:
+        today_observation = build_features(pd.DataFrame(today_observation).T)
+
+    prediction = run_model_validation(model=model, sample=today_observation)
+    print(f"Prediction: {prediction}")
+
+    # todo: more business metrics
+
+    real_balance = get_today_data(current_date)
+    today_metric = calculate_add_margin(
+        prediction=prediction, target=real_balance, cbr_key_rate=today_observation["key_rate"]
+    )
+    print(f"date: {current_date}, add margin: {today_metric}")

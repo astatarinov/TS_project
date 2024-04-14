@@ -5,3 +5,6 @@ cvxpy
 sklearn
 schedule
 tsfresh
+sktime
+statsmodels
+catboost
